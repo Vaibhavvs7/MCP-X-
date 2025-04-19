@@ -1,6 +1,7 @@
 require("dotenv").config();
 const readLine = require("readline/promises");
 const { GoogleGenAI } = require("@google/genai");
+const { type } = require("os");
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -18,7 +19,18 @@ async function chatLoop() {
     contents: chatHistory,
   });
 
-  console.log(response.candidates[0].content.parts[0].text);
+  const responseText = response.candidates[0].content.parts[0].text;
+  chatHistory.push({
+    role: "model",
+    parts: [
+        {
+            text: responseText,
+            type: "text",
+        }
+    ]
+  });
+
+  console.log(`AI: ${responseText}`);
   chatLoop();
 }
 

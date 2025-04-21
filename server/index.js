@@ -1,11 +1,11 @@
 import express, { text } from "express";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
-import {z} from "zod";
+import { z } from "zod";
 
 const server = new McpServer({
   name: "example-server",
-  version: "1.0.0"
+  version: "1.0.0",
 });
 
 // ... set up server resources, tools, and prompts ...
@@ -18,25 +18,26 @@ server.tool(
   {
     a: z.number(), //tool input schema
     b: z.number(), //tool input schema
-
   },
   async (arg) => {
     const { a, b } = arg;
-    return [
-      {
-        type: "text",
-        text: `The sum of ${a} and ${b} is ${a + b}.`,
-      }
-    ]
+    return {  
+      content: [
+        {
+          type: "text",
+          text: `The sum of ${a} and ${b} is ${a + b}.`,
+        },
+      ],
+    };
   }
-)
+);
 
 // to support multiple simultaneous connections we have a lookup object from
 // sessionId to transport
 const transports = {};
 
 app.get("/sse", async (req, res) => {
-  const transport = new SSEServerTransport('/messages', res);
+  const transport = new SSEServerTransport("/messages", res);
   transports[transport.sessionId] = transport;
   res.on("close", () => {
     delete transports[transport.sessionId];
@@ -45,15 +46,15 @@ app.get("/sse", async (req, res) => {
 });
 
 app.post("/messages", async (req, res) => {
-  const sessionId = req.query.sessionId ;
+  const sessionId = req.query.sessionId;
   const transport = transports[sessionId];
   if (transport) {
     await transport.handlePostMessage(req, res);
   } else {
-    res.status(400).send('No transport found for sessionId');
+    res.status(400).send("No transport found for sessionId");
   }
 });
 
 app.listen(3001, () => {
-    console.log("Server is running on http://localhost:3001");
+  console.log("Server is running on http://localhost:3001");
 });

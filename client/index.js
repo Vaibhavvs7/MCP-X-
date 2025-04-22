@@ -6,7 +6,7 @@ import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 
 config();
 
-let tools = [];
+let tools = []
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const mcpClient = new Client({
   name: "example-client",
@@ -23,61 +23,93 @@ mcpClient
   .connect(new SSEClientTransport(new URL("http://localhost:3001/sse")))
   .then(async () => {
     console.log("Connected to mcpserver");
-    tools = (await mcpClient.listTools()).tools.map((tool) => {
+    tools = (await mcpClient.listTools()).tools.map(tool => {
       return {
         name: tool.name,
         description: tool.description,
         parameters: {
           type: tool.inputSchema.type,
           properties: tool.inputSchema.properties,
-          required: tool.inputSchema.required,
-        },
-      };
-    });
+          required: tool.inputSchema.required
+        }
+      }
+    })
     chatLoop();
   });
 
 async function chatLoop(toolCall) {
+
   if (toolCall) {
-    console.log(toolCall.name);
+    console.log("Calling Tool : ",toolCall.name);
+
+    chatHistory.push({
+      role: "model",
+      parts:[
+        {
+          text: `calling tool ${toolCall.name}`,
+          type : "text"
+        }
+      ]
+    })
+
     const toolResult = await mcpClient.callTool({
       name: toolCall.name,
-      arguments: toolCall.args,
-    });
-    console.log(toolResult);
-  }
+      arguments: toolCall.args
+    })
+    
+    chatHistory.push({
+      role: "user",
+      parts:[
+        {
+          text: "Tool result is : " + toolResult.content[ 0 ].text,
+          type : "text"
+        }
+      ]
+    })
+
+  }else{
   const question = await rl.question("You: ");
 
-  chatHistory.push({ role: "user", parts: [{ text: question, type: "text" }] });
+  chatHistory.push({ 
+    role: "user",
+    parts: [
+      {
+        text: question,
+        type: "text" 
+      }
+    ]
+  })
+  }
 
   const response = await ai.models.generateContent({
-    model: "gemini-1.5-flash",
+    model: "gemini-2.0-flash",
     contents: chatHistory,
     config: {
       tools: [
         {
           functionDeclarations: tools,
-        },
-      ],
-    },
-  });
+        }
+      ]
+    }
+  })
 
-  const functionCall = response.candidates[0].content.parts[0].functionCall;
-  const responseText = response.candidates[0].content.parts[0].text;
+  const functionCall = response.candidates[ 0 ].content.parts[0].functionCall
+  const responseText = response.candidates[ 0 ].content.parts[0].text
 
   if (functionCall) {
-    return chatLoop(functionCall);
+    return chatLoop(functionCall)
   }
+
   chatHistory.push({
     role: "model",
     parts: [
       {
         text: responseText,
         type: "text",
-      },
-    ],
-  });
+      }
+    ]
+  })
 
-  console.log(`AI: ${responseText}`);
-  chatLoop();
+  console.log(`AI: ${responseText}`)
+  chatLoop()
 }

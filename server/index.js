@@ -26,11 +26,11 @@ server.tool(
         {
           type: "text",
           text: `The sum of ${a} and ${b} is ${a + b}.`,
-        },
-      ],
-    };
+        }
+      ]
+    }
   }
-);
+)
 
 // to support multiple simultaneous connections we have a lookup object from
 // sessionId to transport
